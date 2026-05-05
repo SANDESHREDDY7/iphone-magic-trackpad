@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Magic Trackpad</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, sans-serif; background: #0f0f0f; color: #fff; height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 20px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; overscroll-behavior: none; touch-action: none; }
+    #connect-screen { display: flex; flex-direction: column; align-items: center; gap: 16px; width: 100%; }
+    #connect-screen h1 { font-size: 24px; }
+    #connect-screen p { color: #aaa; font-size: 14px; text-align: center; }
+    #ip-input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid #333; background: #1c1c1e; color: #fff; font-size: 16px; text-align: center; }
+    #connect-btn { width: 100%; padding: 16px; border-radius: 14px; border: none; background: #0a84ff; color: #fff; font-size: 18px; font-weight: 600; cursor: pointer; }
+    #status-msg { font-size: 13px; color: #ff453a; min-height: 18px; }
+    #control-screen { display: none; flex-direction: column; align-items: center; gap: 14px; width: 100%; height: 100%; }
+    
+    #trackpad { width: 100%; flex: 1; background: #1c1c1e; border-radius: 20px; border: 2px solid #333; display: flex; align-items: center; justify-content: center; touch-action: none; transition: background 0.1s, border 0.1s; }
+    #trackpad.active { background: #2c2c2e; }
+    #trackpad.flash { background: #5a5a5f !important; transition: background 0.05s ease; }
+    
+    #trackpad.drag-mode { border: 2px solid #30d158; background: #1a2e1d !important; }
+    #trackpad-label.drag-text { color: #30d158; font-weight: bold; }
+    
+    #trackpad-label { color: #555; font-size: 15px; pointer-events: none;}
+    .row { display: flex; gap: 12px; width: 100%; }
+    .btn { flex: 1; padding: 18px 10px; border-radius: 14px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; touch-action: manipulation; }
+    .btn:active { opacity: 0.7; }
+    #left-click { background: #0a84ff; color: #fff; }
+    #right-click { background: #2c2c2e; color: #fff; }
+    #scroll-up { background: #30d158; color: #fff; }
+    #scroll-down { background: #ff9f0a; color: #fff; }
+    .label { font-size: 12px; color: #888; align-self: flex-start; }
+    .slider-row { display: flex; align-items: center; gap: 10px; width: 100%; }
+    .slider-row span { font-size: 13px; color: #aaa; }
+    input[type=range] { flex: 1; accent-color: #0a84ff; }
+  </style>
+</head>
+<body>
+  <div id="connect-screen">
+    <h1>🖱️ Magic Trackpad</h1>
+    <input id="ip-input" type="text" placeholder="e.g. 192.168.0.14" />
+    <button id="connect-btn">Connect</button>
+    <p id="status-msg"></p>
+  </div>
+  <div id="control-screen">
+    <div id="trackpad"><span id="trackpad-label">Slide finger here</span></div>
+    <div class="row">
+      <button class="btn" id="left-click">Left Click</button>
+      <button class="btn" id="right-click">Right Click</button>
+    </div>
+    <div class="row">
+      <button class="btn" id="scroll-up">▲ Scroll Up</button>
+      <button class="btn" id="scroll-down">▼ Scroll Down</button>
+    </div>
+    <div class="label">Sensitivity</div>
+    <div class="slider-row">
+      <span>Low</span>
+      <input type="range" id="sensitivity" min="0.5" max="5" step="0.5" value="2" />
+      <span>High</span>
+    </div>
+  </div>
+
+  <script>
+    const connectScreen = document.getElementById("connect-screen");
+    const controlScreen = document.getElementById("control-screen");
+    const ipInput = document.getElementById("ip-input");
+    const connectBtn = document.getElementById("connect-btn");
+    const statusMsg = document.getElementById("status-msg");
+    const sensitivityEl = document.getElementById("sensitivity");
+    const trackpad = document.getElementById("trackpad");
+    const trackpadLabel = document.getElementById("trackpad-label");
+    
+    let ws = null;
+  
+    connectBtn.addEventListener("click", () => {
+      const ip = ipInput.value.trim();
+      if (!ip) { statusMsg.textContent = "Please enter the domain/IP."; return; }
+      statusMsg.textContent = "Connecting..."; statusMsg.style.color = "#ffd60a";
+      let wsUrl = ip.includes("ngrok") ? "wss://" + ip : "ws://" + ip + ":3000";
+  
+      try {
+        ws = new WebSocket(wsUrl);
+        ws.onopen = () => { connectScreen.style.display = "none"; controlScreen.style.display = "flex"; };
+        ws.onerror = () => { statusMsg.textContent = "Could not connect."; statusMsg.style.color = "#ff453a"; };
+        ws.onclose = () => { if (controlScreen.style.display === "flex") { alert("Connection lost."); location.reload(); } };
+      } catch (e) { statusMsg.textContent = "Error."; }
+    });
+
+    function triggerFeedback(vibePattern) {
+      if (navigator.vibrate) navigator.vibrate(vibePattern);
+      trackpad.classList.add("flash");
+      setTimeout(() => trackpad.classList.remove("flash"), 80);
+    }
+  
+    let lastTouchX = null, lastTouchY = null;
+    let startTouchX = 0, startTouchY = 0; 
+    let touchStartTime = 0, maxFingers = 0;
+    let scrollAccumulator = 0;
+    
+    let start3FingerX = 0, start3FingerY = 0, threeFingerFired = false; 
+    let pendingDx = 0, pendingDy = 0;
+
+    let dragTimer = null;
+    let isDragging = false;
+    let hasMoved = false; 
+
+    // NEW: Variable to track rapid double clicks!
+    let lastTapTime = 0;
+
+    window.addEventListener('contextmenu', e => e.preventDefault());
+  
+    trackpad.addEventListener('touchstart', (e) => {
+      e.preventDefault(); 
+      lastTouchX = e.touches[0].clientX;
+      lastTouchY = e.touches[0].clientY;
+      startTouchX = lastTouchX;
+      startTouchY = lastTouchY;
+      hasMoved = false; 
+  
+      if (e.touches.length === 1) {
+        touchStartTime = Date.now();
+        clearTimeout(dragTimer);
+
+        dragTimer = setTimeout(() => {
+          if (!hasMoved) { 
+            isDragging = true;
+            send({ type: "drag_start" });
+            triggerFeedback([30, 50, 30]); 
+            trackpad.classList.add("drag-mode");
+            trackpadLabel.textContent = "🟢 DRAGGING...";
+            trackpadLabel.classList.add("drag-text");
+            lastTapTime = 0; // Reset double-click timer if we are dragging
+          }
+        }, 350); 
+      } else {
+        clearTimeout(dragTimer);
+      }
+      
+      if (e.touches.length === 3) {
+        start3FingerX = e.touches[0].clientX; start3FingerY = e.touches[0].clientY; threeFingerFired = false; 
+      }
+      maxFingers = Math.max(maxFingers, e.touches.length);
+      trackpad.classList.add("active");
+      if (!isDragging) trackpadLabel.textContent = ""; 
+    }, { passive: false });
+  
+    trackpad.addEventListener('touchmove', (e) => {
+      e.preventDefault(); 
+      if (lastTouchX === null || lastTouchY === null) return;
+  
+      const currentX = e.touches[0].clientX; const currentY = e.touches[0].clientY;
+      const dx = currentX - lastTouchX; const dy = currentY - lastTouchY;
+      
+      const totalDx = currentX - startTouchX; const totalDy = currentY - startTouchY;
+      if (Math.abs(totalDx) > 10 || Math.abs(totalDy) > 10) {
+        hasMoved = true; 
+        if (!isDragging) {
+          clearTimeout(dragTimer); 
+        }
+      }
+  
+      if (maxFingers === 1) {
+        const sens = parseFloat(sensitivityEl.value); pendingDx += dx * sens; pendingDy += dy * sens;
+      } 
+      else if (maxFingers === 2 && e.touches.length === 2) {
+        scrollAccumulator += dy;
+        if (Math.abs(scrollAccumulator) > 15) { send({ type: "scroll", dir: scrollAccumulator > 0 ? "up" : "down" }); scrollAccumulator = 0; }
+      }
+      else if (maxFingers === 3 && e.touches.length === 3) {
+        if (!threeFingerFired) {
+          const dx3 = currentX - start3FingerX; const dy3 = currentY - start3FingerY; const threshold = 40; 
+          if (dy3 < -threshold) { send({ type: "swipe", dir: "up" }); threeFingerFired = true; }
+          else if (dy3 > threshold) { send({ type: "swipe", dir: "down" }); threeFingerFired = true; }
+          else if (dx3 < -threshold) { send({ type: "swipe", dir: "left" }); threeFingerFired = true; }
+          else if (dx3 > threshold) { send({ type: "swipe", dir: "right" }); threeFingerFired = true; }
+        }
+      }
+      lastTouchX = currentX; lastTouchY = currentY;
+    }, { passive: false });
+  
+    trackpad.addEventListener('touchend', (e) => {
+      e.preventDefault(); 
+      clearTimeout(dragTimer);
+
+      if (e.touches.length > 0) { lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY; return; }
+  
+      if (isDragging) {
+        isDragging = false;
+        send({ type: "drag_end" });
+        triggerFeedback(20); 
+        trackpad.classList.remove("drag-mode");
+        trackpadLabel.classList.remove("drag-text");
+      } else {
+        const touchDuration = Date.now() - touchStartTime;
+        if (!hasMoved && touchDuration < 300) { 
+          
+          if (maxFingers === 1) { 
+            // THE NEW DOUBLE CLICK LOGIC
+            const timeSinceLastTap = Date.now() - lastTapTime;
+            if (timeSinceLastTap > 0 && timeSinceLastTap < 400) {
+              send({ type: "double_click" }); // Send special command to Mac!
+              triggerFeedback([20, 30, 20]); // Cool double-buzz feeling
+              lastTapTime = 0; // Reset the timer
+            } else {
+              send({ type: "click" }); 
+              triggerFeedback(15); 
+              lastTapTime = Date.now(); // Start the timer!
+            }
+          }
+          
+          if (maxFingers === 2) { send({ type: "rightclick" }); triggerFeedback([15, 30, 15]); }
+        }
+      }
+  
+      lastTouchX = null; lastTouchY = null; maxFingers = 0; scrollAccumulator = 0;
+      trackpad.classList.remove("active");
+      if (!isDragging) trackpadLabel.textContent = "Slide finger here";
+    }, { passive: false });
+  
+    function renderLoop() {
+      if (pendingDx !== 0 || pendingDy !== 0) { send({ type: "touch_move", dx: pendingDx, dy: pendingDy }); pendingDx = 0; pendingDy = 0; }
+      requestAnimationFrame(renderLoop);
+    }
+    renderLoop(); 
+  
+    document.getElementById("left-click").addEventListener("click", () => { send({ type: "drag_end" }); send({ type: "click" }); triggerFeedback(15); });
+    document.getElementById("right-click").addEventListener("click", () => { send({ type: "rightclick" }); triggerFeedback([15, 30, 15]); });
+    document.getElementById("scroll-up").addEventListener("click", () => send({ type: "scroll", dir: "up" }));
+    document.getElementById("scroll-down").addEventListener("click", () => send({ type: "scroll", dir: "down" }));
+  
+    function send(data) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(data)); }
+  </script>
+</body>
+</html>

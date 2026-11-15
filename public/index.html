@@ -2,234 +2,1121 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Magic Trackpad</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Trackpad" />
+  <meta name="theme-color" content="#090a0f" />
+  <title>Magic Trackpad Pro</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, sans-serif; background: #0f0f0f; color: #fff; height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 20px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; overscroll-behavior: none; touch-action: none; }
-    #connect-screen { display: flex; flex-direction: column; align-items: center; gap: 16px; width: 100%; }
-    #connect-screen h1 { font-size: 24px; }
-    #connect-screen p { color: #aaa; font-size: 14px; text-align: center; }
-    #ip-input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid #333; background: #1c1c1e; color: #fff; font-size: 16px; text-align: center; }
-    #connect-btn { width: 100%; padding: 16px; border-radius: 14px; border: none; background: #0a84ff; color: #fff; font-size: 18px; font-weight: 600; cursor: pointer; }
-    #status-msg { font-size: 13px; color: #ff453a; min-height: 18px; }
-    #control-screen { display: none; flex-direction: column; align-items: center; gap: 14px; width: 100%; height: 100%; }
-    
-    #trackpad { width: 100%; flex: 1; background: #1c1c1e; border-radius: 20px; border: 2px solid #333; display: flex; align-items: center; justify-content: center; touch-action: none; transition: background 0.1s, border 0.1s; }
-    #trackpad.active { background: #2c2c2e; }
-    #trackpad.flash { background: #5a5a5f !important; transition: background 0.05s ease; }
-    
-    #trackpad.drag-mode { border: 2px solid #30d158; background: #1a2e1d !important; }
-    #trackpad-label.drag-text { color: #30d158; font-weight: bold; }
-    
-    #trackpad-label { color: #555; font-size: 15px; pointer-events: none;}
-    .row { display: flex; gap: 12px; width: 100%; }
-    .btn { flex: 1; padding: 18px 10px; border-radius: 14px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; touch-action: manipulation; }
-    .btn:active { opacity: 0.7; }
-    #left-click { background: #0a84ff; color: #fff; }
-    #right-click { background: #2c2c2e; color: #fff; }
-    #scroll-up { background: #30d158; color: #fff; }
-    #scroll-down { background: #ff9f0a; color: #fff; }
-    .label { font-size: 12px; color: #888; align-self: flex-start; }
-    .slider-row { display: flex; align-items: center; gap: 10px; width: 100%; }
-    .slider-row span { font-size: 13px; color: #aaa; }
-    input[type=range] { flex: 1; accent-color: #0a84ff; }
+    :root {
+      --bg: #08090d;
+      --surface: rgba(25, 27, 36, 0.72);
+      --surface-border: rgba(255, 255, 255, 0.08);
+      --surface-border-bright: rgba(255, 255, 255, 0.16);
+      --primary: #0a84ff;
+      --primary-glow: rgba(10, 132, 255, 0.35);
+      --accent-green: #30d158;
+      --accent-green-glow: rgba(48, 209, 88, 0.3);
+      --accent-orange: #ff9f0a;
+      --accent-red: #ff453a;
+      --text-main: #f5f5f7;
+      --text-muted: #86868b;
+      --font-stack: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      background-image: 
+        radial-gradient(circle at 50% -10%, rgba(10, 132, 255, 0.12), transparent 45%),
+        radial-gradient(circle at 10% 90%, rgba(48, 209, 88, 0.04), transparent 40%);
+      color: var(--text-main);
+      font-family: var(--font-stack);
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      overscroll-behavior: none;
+      touch-action: none;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      padding: env(safe-area-inset-top, 16px) env(safe-area-inset-right, 16px) env(safe-area-inset-bottom, 16px) env(safe-area-inset-left, 16px);
+      min-height: 100dvh;
+      max-height: 100dvh;
+    }
+
+    /* GLASS CARD SYSTEM */
+    .glass-panel {
+      background: var(--surface);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
+      border: 1px solid var(--surface-border);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+    }
+
+    /* =========================================
+       CONNECT SCREEN
+       ========================================= */
+    #connect-screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      gap: 28px;
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    .brand-icon-wrapper {
+      position: relative;
+      width: 88px;
+      height: 88px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 26px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02));
+      border: 1px solid var(--surface-border-bright);
+      box-shadow: 0 12px 30px var(--primary-glow);
+    }
+
+    .brand-icon-wrapper svg {
+      width: 44px;
+      height: 44px;
+      fill: none;
+      stroke: var(--primary);
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .brand-title {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.6px;
+      text-align: center;
+    }
+
+    .brand-subtitle {
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 400;
+      text-align: center;
+      line-height: 1.4;
+      margin-top: 4px;
+    }
+
+    .input-card {
+      width: 100%;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .input-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .modern-input {
+      width: 100%;
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid var(--surface-border);
+      background: rgba(10, 11, 16, 0.7);
+      color: #fff;
+      font-size: 17px;
+      font-weight: 500;
+      text-align: center;
+      letter-spacing: 0.5px;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .modern-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px var(--primary-glow);
+      background: rgba(10, 11, 16, 0.95);
+    }
+
+    .connect-btn {
+      width: 100%;
+      padding: 16px;
+      border-radius: 16px;
+      border: none;
+      background: linear-gradient(180deg, #1f8eff, #0071e3);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 6px 20px var(--primary-glow), inset 0 1px 0 rgba(255,255,255,0.25);
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    .connect-btn:active {
+      transform: scale(0.98);
+      opacity: 0.88;
+    }
+
+    #status-msg {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--accent-red);
+      min-height: 18px;
+      text-align: center;
+    }
+
+    /* =========================================
+       CONTROL SCREEN
+       ========================================= */
+    #control-screen {
+      display: none;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      gap: 12px;
+      position: relative;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    /* TOP BAR */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 44px;
+      padding: 0 4px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--surface-border);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.2px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+      animation: pulse 2s infinite ease-in-out;
+    }
+
+    .icon-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      border: 1px solid var(--surface-border);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .icon-btn:active {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .icon-btn svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+    }
+
+    /* TRACKPAD SURFACE */
+    #trackpad {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      min-height: 200px;
+      border-radius: 28px;
+      background: radial-gradient(circle at 50% 50%, rgba(35, 38, 50, 0.8), rgba(20, 22, 30, 0.85));
+      backdrop-filter: blur(25px);
+      border: 1.5px solid var(--surface-border-bright);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 20px 40px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      touch-action: none;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    }
+
+    #trackpad.active {
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    #trackpad.flash {
+      background: radial-gradient(circle at 50% 50%, rgba(10, 132, 255, 0.25), rgba(20, 22, 30, 0.9)) !important;
+    }
+
+    #trackpad.drag-mode {
+      border-color: var(--accent-green) !important;
+      background: radial-gradient(circle at 50% 50%, rgba(48, 209, 88, 0.18), rgba(15, 30, 20, 0.9)) !important;
+      box-shadow: 0 0 35px var(--accent-green-glow), inset 0 0 20px var(--accent-green-glow) !important;
+    }
+
+    .trackpad-indicator {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .trackpad-indicator svg {
+      width: 32px;
+      height: 32px;
+      stroke: var(--text-muted);
+      stroke-width: 1.6;
+      fill: none;
+      opacity: 0.6;
+    }
+
+    #trackpad-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-muted);
+      letter-spacing: -0.2px;
+      pointer-events: none;
+    }
+
+    .drag-badge {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      background: rgba(48, 209, 88, 0.2);
+      border: 1px solid var(--accent-green);
+      color: var(--accent-green);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      box-shadow: 0 0 15px var(--accent-green-glow);
+    }
+
+    #trackpad.drag-mode .drag-badge {
+      display: flex;
+    }
+
+    #trackpad.drag-mode .trackpad-indicator svg,
+    #trackpad.drag-mode #trackpad-label {
+      display: none;
+    }
+
+    /* TOUCH RIPPLE EFFECT */
+    .touch-point {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(10, 132, 255, 0.45) 0%, rgba(10, 132, 255, 0) 70%);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      transition: opacity 0.2s ease;
+      display: none;
+    }
+
+    /* CONTROLS AREA */
+    .controls-deck {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .btn {
+      flex: 1;
+      height: 52px;
+      border-radius: 16px;
+      border: 1px solid var(--surface-border);
+      background: var(--surface);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08);
+      transition: transform 0.12s ease, opacity 0.12s ease, background 0.12s;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+      opacity: 0.8;
+    }
+
+    .btn svg {
+      width: 17px;
+      height: 17px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .btn-primary {
+      background: linear-gradient(180deg, rgba(10, 132, 255, 0.88), rgba(0, 113, 227, 0.95));
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 6px 18px var(--primary-glow), inset 0 1px 0 rgba(255,255,255,0.3);
+      color: #fff;
+    }
+
+    .btn-scroll-up {
+      color: var(--accent-green);
+    }
+    .btn-scroll-down {
+      color: var(--accent-orange);
+    }
+
+    /* SENSITIVITY DRAWER */
+    .slider-card {
+      padding: 12px 18px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+    }
+
+    .slider-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 80px;
+    }
+
+    .slider-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .slider-val {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    input[type=range] {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+    }
+
+    /* GESTURES MODAL */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 380px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .gesture-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    .gesture-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .gesture-name {
+      color: var(--text-muted);
+    }
+
+    .gesture-action {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .close-btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--surface-border);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
   </style>
 </head>
 <body>
+
+  <!-- CONNECT VIEW -->
   <div id="connect-screen">
-    <h1>🖱️ Magic Trackpad</h1>
-    <input id="ip-input" type="text" placeholder="e.g. 192.168.0.14" />
-    <button id="connect-btn">Connect</button>
-    <p id="status-msg"></p>
+    <div class="brand-icon-wrapper">
+      <svg viewBox="0 0 24 24">
+        <rect x="2" y="4" width="20" height="16" rx="4" />
+        <line x1="2" y1="14" x2="22" y2="14" />
+        <line x1="12" y1="14" x2="12" y2="20" />
+      </svg>
+    </div>
+
+    <div>
+      <h1 class="brand-title">Magic Trackpad</h1>
+      <p class="brand-subtitle">Precision mouse & gesture remote for Mac</p>
+    </div>
+
+    <div class="glass-panel input-card">
+      <div class="input-label">Host IP Address or Domain</div>
+      <input id="ip-input" class="modern-input" type="text" placeholder="e.g. 192.168.1.4" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+      
+      <button id="connect-btn" class="connect-btn">
+        <span>Connect to Mac</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+
+      <p id="status-msg"></p>
+    </div>
   </div>
+
+  <!-- CONTROL VIEW -->
   <div id="control-screen">
-    <div id="trackpad"><span id="trackpad-label">Slide finger here</span></div>
-    <div class="row">
-      <button class="btn" id="left-click">Left Click</button>
-      <button class="btn" id="right-click">Right Click</button>
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        <span id="conn-label">Connected</span>
+      </div>
+
+      <div class="icon-actions">
+        <button id="haptic-btn" class="icon-btn" title="Toggle Haptics">
+          <svg viewBox="0 0 24 24">
+            <path d="M2 10v4M6 7v10M18 7v10M22 10v4M10 4v16M14 4v16" />
+          </svg>
+        </button>
+        <button id="help-btn" class="icon-btn" title="Gestures Guide">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        </button>
+      </div>
     </div>
-    <div class="row">
-      <button class="btn" id="scroll-up">▲ Scroll Up</button>
-      <button class="btn" id="scroll-down">▼ Scroll Down</button>
+
+    <!-- Interactive Trackpad -->
+    <div id="trackpad">
+      <div class="touch-point" id="touch-ripple"></div>
+
+      <div class="trackpad-indicator">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2a10 10 0 0 0-10 10c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.1-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z" style="display:none;" />
+          <rect x="3" y="3" width="18" height="18" rx="4" />
+          <line x1="8" y1="12" x2="16" y2="12" />
+        </svg>
+        <span id="trackpad-label">Glide finger to steer cursor</span>
+      </div>
+
+      <div class="drag-badge">
+        <span>●</span>
+        <span>Dragging Active</span>
+      </div>
     </div>
-    <div class="label">Sensitivity</div>
-    <div class="slider-row">
-      <span>Low</span>
-      <input type="range" id="sensitivity" min="0.5" max="5" step="0.5" value="2" />
-      <span>High</span>
+
+    <!-- Controls Deck -->
+    <div class="controls-deck">
+      <div class="row">
+        <button class="btn btn-primary" id="left-click">
+          <svg viewBox="0 0 24 24">
+            <rect x="6" y="3" width="12" height="18" rx="6" />
+            <line x1="12" y1="3" x2="12" y2="10" />
+            <path d="M6 10h6" />
+          </svg>
+          <span>Left Click</span>
+        </button>
+
+        <button class="btn" id="right-click">
+          <svg viewBox="0 0 24 24">
+            <rect x="6" y="3" width="12" height="18" rx="6" />
+            <line x1="12" y1="3" x2="12" y2="10" />
+            <path d="M12 10h6" />
+          </svg>
+          <span>Right Click</span>
+        </button>
+      </div>
+
+      <div class="row">
+        <button class="btn btn-scroll-up" id="scroll-up">
+          <svg viewBox="0 0 24 24">
+            <polyline points="18 15 12 9 6 15" />
+          </svg>
+          <span>Scroll Up</span>
+        </button>
+
+        <button class="btn btn-scroll-down" id="scroll-down">
+          <svg viewBox="0 0 24 24">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+          <span>Scroll Down</span>
+        </button>
+      </div>
+
+      <!-- Sensitivity Control -->
+      <div class="slider-card">
+        <div class="slider-info">
+          <span class="slider-title">Sensitivity</span>
+          <span class="slider-val" id="sens-val">2.0×</span>
+        </div>
+        <input type="range" id="sensitivity" min="0.5" max="5.0" step="0.25" value="2.0" />
+      </div>
+    </div>
+  </div>
+
+  <!-- GESTURES MODAL -->
+  <div class="modal-backdrop" id="gesture-modal">
+    <div class="glass-panel modal-card">
+      <div class="modal-header">
+        <span class="modal-title">Mac Gestures</span>
+      </div>
+
+      <div class="gesture-list">
+        <div class="gesture-item">
+          <span class="gesture-name">1 Finger Move</span>
+          <span class="gesture-action">Move Cursor</span>
+        </div>
+        <div class="gesture-item">
+          <span class="gesture-name">1 Finger Tap</span>
+          <span class="gesture-action">Left Click</span>
+        </div>
+        <div class="gesture-item">
+          <span class="gesture-name">Rapid Double Tap</span>
+          <span class="gesture-action">Double Click</span>
+        </div>
+        <div class="gesture-item">
+          <span class="gesture-name">Tap & Hold (350ms)</span>
+          <span class="gesture-action">Drag & Drop</span>
+        </div>
+        <div class="gesture-item">
+          <span class="gesture-name">2 Finger Tap</span>
+          <span class="gesture-action">Right Click</span>
+        </div>
+        <div class="gesture-item">
+          <span class="gesture-name">2 Finger Slide</span>
+          <span class="gesture-action">Scroll Page</span>
+        </div>
+        <div class="gesture-item">
+          <span class="gesture-name">3 Finger Swipe Up</span>
+          <span class="gesture-action">Mission Control</span>
+        </div>
+        <div class="gesture-item">
+          <span class="gesture-name">3 Finger Swipe Left/Right</span>
+          <span class="gesture-action">Switch Desktops</span>
+        </div>
+      </div>
+
+      <button class="close-btn" id="modal-close-btn">Got It</button>
     </div>
   </div>
 
   <script>
+    // Elements
     const connectScreen = document.getElementById("connect-screen");
     const controlScreen = document.getElementById("control-screen");
     const ipInput = document.getElementById("ip-input");
     const connectBtn = document.getElementById("connect-btn");
     const statusMsg = document.getElementById("status-msg");
     const sensitivityEl = document.getElementById("sensitivity");
+    const sensValEl = document.getElementById("sens-val");
     const trackpad = document.getElementById("trackpad");
     const trackpadLabel = document.getElementById("trackpad-label");
-    
+    const touchRipple = document.getElementById("touch-ripple");
+    const helpBtn = document.getElementById("help-btn");
+    const gestureModal = document.getElementById("gesture-modal");
+    const modalCloseBtn = document.getElementById("modal-close-btn");
+    const hapticBtn = document.getElementById("haptic-btn");
+
     let ws = null;
-  
-    connectBtn.addEventListener("click", () => {
-      const ip = ipInput.value.trim();
-      if (!ip) { statusMsg.textContent = "Please enter the domain/IP."; return; }
-      statusMsg.textContent = "Connecting..."; statusMsg.style.color = "#ffd60a";
-      let wsUrl = ip.includes("ngrok") ? "wss://" + ip : "ws://" + ip + ":3000";
-  
-      try {
-        ws = new WebSocket(wsUrl);
-        ws.onopen = () => { connectScreen.style.display = "none"; controlScreen.style.display = "flex"; };
-        ws.onerror = () => { statusMsg.textContent = "Could not connect."; statusMsg.style.color = "#ff453a"; };
-        ws.onclose = () => { if (controlScreen.style.display === "flex") { alert("Connection lost."); location.reload(); } };
-      } catch (e) { statusMsg.textContent = "Error."; }
+    let hapticsEnabled = true;
+
+    // Auto-detect and populate host IP if loaded directly from the browser
+    if (window.location.hostname && window.location.hostname !== "") {
+      ipInput.value = window.location.hostname;
+    }
+
+    // Toggle Haptics
+    hapticBtn.addEventListener("click", () => {
+      hapticsEnabled = !hapticsEnabled;
+      hapticBtn.style.opacity = hapticsEnabled ? "1" : "0.4";
+      if (hapticsEnabled) triggerFeedback(15);
     });
 
-    function triggerFeedback(vibePattern) {
-      if (navigator.vibrate) navigator.vibrate(vibePattern);
-      trackpad.classList.add("flash");
-      setTimeout(() => trackpad.classList.remove("flash"), 80);
+    // Gestures Modal
+    helpBtn.addEventListener("click", () => gestureModal.style.display = "flex");
+    modalCloseBtn.addEventListener("click", () => gestureModal.style.display = "none");
+    gestureModal.addEventListener("click", (e) => {
+      if (e.target === gestureModal) gestureModal.style.display = "none";
+    });
+
+    // Sensitivity display update
+    sensitivityEl.addEventListener("input", (e) => {
+      sensValEl.textContent = parseFloat(e.target.value).toFixed(2) + "×";
+      triggerBtnHaptic(8);
+    });
+
+    // WebSocket Connection
+    function connect() {
+      const ip = ipInput.value.trim();
+      if (!ip) {
+        statusMsg.textContent = "Please enter an IP address or hostname.";
+        return;
+      }
+
+      statusMsg.textContent = "Connecting to " + ip + "...";
+      statusMsg.style.color = "#ffd60a";
+
+      const wsUrl = ip.includes("ngrok") 
+        ? "wss://" + ip 
+        : (ip.startsWith("ws://") || ip.startsWith("wss://") ? ip : "ws://" + ip + ":3000");
+
+      try {
+        if (ws) {
+          ws.close();
+        }
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          connectScreen.style.display = "none";
+          controlScreen.style.display = "flex";
+          triggerFeedback([20, 40]);
+          const savedToken = localStorage.getItem("magic_token");
+          if (savedToken) {
+            send({ type: "auth", token: savedToken });
+          }
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === "handshake") {
+              const connLabel = document.getElementById("conn-label");
+              if (connLabel && data.hostname) {
+                connLabel.textContent = data.hostname;
+              }
+            } else if (data.type === "auth_required") {
+              const pin = prompt("Enter 4-digit PIN shown on your computer:");
+              if (pin) {
+                send({ type: "auth", pin: pin.trim() });
+              }
+            } else if (data.type === "auth_success") {
+              if (data.token) {
+                localStorage.setItem("magic_token", data.token);
+              }
+            } else if (data.type === "auth_failed") {
+              alert(data.message || "Incorrect PIN");
+            }
+          } catch (_) {}
+        };
+
+        ws.onerror = () => {
+          statusMsg.textContent = "Could not connect to " + ip;
+          statusMsg.style.color = "#ff453a";
+        };
+
+        ws.onclose = () => {
+          if (controlScreen.style.display === "flex") {
+            alert("Disconnected from Mac.");
+            location.reload();
+          }
+        };
+      } catch (e) {
+        statusMsg.textContent = "Connection error.";
+        statusMsg.style.color = "#ff453a";
+      }
     }
-  
+
+    connectBtn.addEventListener("click", connect);
+    ipInput.addEventListener("keydown", (e) => { if (e.key === "Enter") connect(); });
+
+    // Auto-connect when opened via QR code or phone directly
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("autoconnect") === "true" || (window.location.hostname && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1")) {
+      setTimeout(connect, 300);
+    }
+
+    // Haptic & Visual Feedback
+    function triggerFeedback(vibePattern) {
+      if (hapticsEnabled) {
+        if (navigator.vibrate) {
+          navigator.vibrate(vibePattern);
+        }
+        playMicroClick(150);
+      }
+      trackpad.classList.add("flash");
+      setTimeout(() => trackpad.classList.remove("flash"), 70);
+    }
+
+    // Touch Handling Variables
     let lastTouchX = null, lastTouchY = null;
-    let startTouchX = 0, startTouchY = 0; 
+    let startTouchX = 0, startTouchY = 0;
     let touchStartTime = 0, maxFingers = 0;
     let scrollAccumulator = 0;
-    
-    let start3FingerX = 0, start3FingerY = 0, threeFingerFired = false; 
+
+    let start3FingerX = 0, start3FingerY = 0, threeFingerFired = false;
     let pendingDx = 0, pendingDy = 0;
 
     let dragTimer = null;
     let isDragging = false;
-    let hasMoved = false; 
-
-    // NEW: Variable to track rapid double clicks!
+    let hasMoved = false;
     let lastTapTime = 0;
 
-    window.addEventListener('contextmenu', e => e.preventDefault());
-  
-    trackpad.addEventListener('touchstart', (e) => {
-      e.preventDefault(); 
-      lastTouchX = e.touches[0].clientX;
-      lastTouchY = e.touches[0].clientY;
+    window.addEventListener("contextmenu", (e) => e.preventDefault());
+
+    trackpad.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const rect = trackpad.getBoundingClientRect();
+      lastTouchX = touch.clientX;
+      lastTouchY = touch.clientY;
       startTouchX = lastTouchX;
       startTouchY = lastTouchY;
-      hasMoved = false; 
-  
+      hasMoved = false;
+
+      // Position touch ripple
+      touchRipple.style.left = (touch.clientX - rect.left) + "px";
+      touchRipple.style.top = (touch.clientY - rect.top) + "px";
+      touchRipple.style.display = "block";
+
       if (e.touches.length === 1) {
         touchStartTime = Date.now();
         clearTimeout(dragTimer);
 
         dragTimer = setTimeout(() => {
-          if (!hasMoved) { 
+          if (!hasMoved) {
             isDragging = true;
             send({ type: "drag_start" });
-            triggerFeedback([30, 50, 30]); 
+            triggerFeedback([30, 50, 30]);
             trackpad.classList.add("drag-mode");
-            trackpadLabel.textContent = "🟢 DRAGGING...";
-            trackpadLabel.classList.add("drag-text");
-            lastTapTime = 0; // Reset double-click timer if we are dragging
+            lastTapTime = 0;
           }
-        }, 350); 
+        }, 350);
       } else {
         clearTimeout(dragTimer);
       }
-      
+
       if (e.touches.length === 3) {
-        start3FingerX = e.touches[0].clientX; start3FingerY = e.touches[0].clientY; threeFingerFired = false; 
+        start3FingerX = touch.clientX;
+        start3FingerY = touch.clientY;
+        threeFingerFired = false;
       }
+
       maxFingers = Math.max(maxFingers, e.touches.length);
       trackpad.classList.add("active");
-      if (!isDragging) trackpadLabel.textContent = ""; 
+      if (!isDragging) trackpadLabel.style.opacity = "0";
     }, { passive: false });
-  
-    trackpad.addEventListener('touchmove', (e) => {
-      e.preventDefault(); 
-      if (lastTouchX === null || lastTouchY === null) return;
-  
-      const currentX = e.touches[0].clientX; const currentY = e.touches[0].clientY;
-      const dx = currentX - lastTouchX; const dy = currentY - lastTouchY;
-      
-      const totalDx = currentX - startTouchX; const totalDy = currentY - startTouchY;
-      if (Math.abs(totalDx) > 10 || Math.abs(totalDy) > 10) {
-        hasMoved = true; 
-        if (!isDragging) {
-          clearTimeout(dragTimer); 
-        }
-      }
-  
-      if (maxFingers === 1) {
-        const sens = parseFloat(sensitivityEl.value); pendingDx += dx * sens; pendingDy += dy * sens;
-      } 
-      else if (maxFingers === 2 && e.touches.length === 2) {
-        scrollAccumulator += dy;
-        if (Math.abs(scrollAccumulator) > 15) { send({ type: "scroll", dir: scrollAccumulator > 0 ? "up" : "down" }); scrollAccumulator = 0; }
-      }
-      else if (maxFingers === 3 && e.touches.length === 3) {
-        if (!threeFingerFired) {
-          const dx3 = currentX - start3FingerX; const dy3 = currentY - start3FingerY; const threshold = 40; 
-          if (dy3 < -threshold) { send({ type: "swipe", dir: "up" }); threeFingerFired = true; }
-          else if (dy3 > threshold) { send({ type: "swipe", dir: "down" }); threeFingerFired = true; }
-          else if (dx3 < -threshold) { send({ type: "swipe", dir: "left" }); threeFingerFired = true; }
-          else if (dx3 > threshold) { send({ type: "swipe", dir: "right" }); threeFingerFired = true; }
-        }
-      }
-      lastTouchX = currentX; lastTouchY = currentY;
-    }, { passive: false });
-  
-    trackpad.addEventListener('touchend', (e) => {
-      e.preventDefault(); 
-      clearTimeout(dragTimer);
 
-      if (e.touches.length > 0) { lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY; return; }
-  
+    trackpad.addEventListener("touchmove", (e) => {
+      e.preventDefault();
+      if (lastTouchX === null || lastTouchY === null) return;
+
+      const currentX = e.touches[0].clientX;
+      const currentY = e.touches[0].clientY;
+      const dx = currentX - lastTouchX;
+      const dy = currentY - lastTouchY;
+
+      // Update ripple position
+      const rect = trackpad.getBoundingClientRect();
+      touchRipple.style.left = (currentX - rect.left) + "px";
+      touchRipple.style.top = (currentY - rect.top) + "px";
+
+      const totalDx = currentX - startTouchX;
+      const totalDy = currentY - startTouchY;
+      if (Math.abs(totalDx) > 8 || Math.abs(totalDy) > 8) {
+        hasMoved = true;
+        if (!isDragging) {
+          clearTimeout(dragTimer);
+        }
+      }
+
+      if (e.touches.length === 1) {
+        const sens = parseFloat(sensitivityEl.value) || 2.0;
+        pendingDx += dx * sens;
+        pendingDy += dy * sens;
+      } 
+      else if (e.touches.length === 2) {
+        scrollAccumulator += dy;
+        if (Math.abs(scrollAccumulator) > 12) {
+          send({ type: "scroll", dir: scrollAccumulator > 0 ? "up" : "down" });
+          scrollAccumulator = 0;
+        }
+      } 
+      else if (e.touches.length === 3) {
+        if (!threeFingerFired) {
+          const dx3 = currentX - start3FingerX;
+          const dy3 = currentY - start3FingerY;
+          const threshold = 35;
+          if (dy3 < -threshold) { send({ type: "swipe", dir: "up" }); threeFingerFired = true; triggerFeedback(20); }
+          else if (dy3 > threshold) { send({ type: "swipe", dir: "down" }); threeFingerFired = true; triggerFeedback(20); }
+          else if (dx3 < -threshold) { send({ type: "swipe", dir: "left" }); threeFingerFired = true; triggerFeedback(20); }
+          else if (dx3 > threshold) { send({ type: "swipe", dir: "right" }); threeFingerFired = true; triggerFeedback(20); }
+        }
+      }
+
+      lastTouchX = currentX;
+      lastTouchY = currentY;
+    }, { passive: false });
+
+    trackpad.addEventListener("touchend", (e) => {
+      e.preventDefault();
+      clearTimeout(dragTimer);
+      touchRipple.style.display = "none";
+
+      if (e.touches.length > 0) {
+        lastTouchX = e.touches[0].clientX;
+        lastTouchY = e.touches[0].clientY;
+        return;
+      }
+
       if (isDragging) {
         isDragging = false;
         send({ type: "drag_end" });
-        triggerFeedback(20); 
+        triggerFeedback(20);
         trackpad.classList.remove("drag-mode");
-        trackpadLabel.classList.remove("drag-text");
       } else {
         const touchDuration = Date.now() - touchStartTime;
-        if (!hasMoved && touchDuration < 300) { 
-          
-          if (maxFingers === 1) { 
-            // THE NEW DOUBLE CLICK LOGIC
+        if (!hasMoved && touchDuration < 300) {
+          if (maxFingers === 1) {
             const timeSinceLastTap = Date.now() - lastTapTime;
             if (timeSinceLastTap > 0 && timeSinceLastTap < 400) {
-              send({ type: "double_click" }); // Send special command to Mac!
-              triggerFeedback([20, 30, 20]); // Cool double-buzz feeling
-              lastTapTime = 0; // Reset the timer
+              send({ type: "double_click" });
+              triggerFeedback([20, 30, 20]);
+              lastTapTime = 0;
             } else {
-              send({ type: "click" }); 
-              triggerFeedback(15); 
-              lastTapTime = Date.now(); // Start the timer!
+              send({ type: "click" });
+              triggerFeedback(15);
+              lastTapTime = Date.now();
             }
           }
-          
-          if (maxFingers === 2) { send({ type: "rightclick" }); triggerFeedback([15, 30, 15]); }
+
+          if (maxFingers === 2) {
+            send({ type: "rightclick" });
+            triggerFeedback([15, 30, 15]);
+          }
         }
       }
-  
-      lastTouchX = null; lastTouchY = null; maxFingers = 0; scrollAccumulator = 0;
+
+      lastTouchX = null;
+      lastTouchY = null;
+      maxFingers = 0;
+      scrollAccumulator = 0;
       trackpad.classList.remove("active");
-      if (!isDragging) trackpadLabel.textContent = "Slide finger here";
+      if (!isDragging) trackpadLabel.style.opacity = "1";
     }, { passive: false });
-  
+
+    // Render loop for ultra-fluid cursor movement
     function renderLoop() {
-      if (pendingDx !== 0 || pendingDy !== 0) { send({ type: "touch_move", dx: pendingDx, dy: pendingDy }); pendingDx = 0; pendingDy = 0; }
+      if (pendingDx !== 0 || pendingDy !== 0) {
+        send({ type: "touch_move", dx: pendingDx, dy: pendingDy });
+        pendingDx = 0;
+        pendingDy = 0;
+      }
       requestAnimationFrame(renderLoop);
     }
-    renderLoop(); 
-  
-    document.getElementById("left-click").addEventListener("click", () => { send({ type: "drag_end" }); send({ type: "click" }); triggerFeedback(15); });
-    document.getElementById("right-click").addEventListener("click", () => { send({ type: "rightclick" }); triggerFeedback([15, 30, 15]); });
-    document.getElementById("scroll-up").addEventListener("click", () => send({ type: "scroll", dir: "up" }));
-    document.getElementById("scroll-down").addEventListener("click", () => send({ type: "scroll", dir: "down" }));
-  
-    function send(data) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(data)); }
+    renderLoop();
+
+    // Web Audio Micro-Click (Simulates physical tactile feedback on iOS Safari)
+    let audioCtx = null;
+    function playMicroClick(frequency = 160, duration = 0.012) {
+      if (!hapticsEnabled) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + duration);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (_) {}
+    }
+
+    // Button & UI Haptics
+    function triggerBtnHaptic(pattern = 15, freq = 160) {
+      if (!hapticsEnabled) return;
+      if (navigator.vibrate) {
+        navigator.vibrate(pattern);
+      }
+      playMicroClick(freq);
+    }
+
+    const leftBtn = document.getElementById("left-click");
+    const rightBtn = document.getElementById("right-click");
+    const scrollUpBtn = document.getElementById("scroll-up");
+    const scrollDownBtn = document.getElementById("scroll-down");
+
+    // Immediate tactile feedback on touch/pointer down
+    leftBtn.addEventListener("pointerdown", () => triggerBtnHaptic(20, 180));
+    rightBtn.addEventListener("pointerdown", () => triggerBtnHaptic([20, 25], 130));
+    scrollUpBtn.addEventListener("pointerdown", () => triggerBtnHaptic(12, 220));
+    scrollDownBtn.addEventListener("pointerdown", () => triggerBtnHaptic(12, 190));
+    connectBtn.addEventListener("pointerdown", () => triggerBtnHaptic([15, 30], 240));
+    helpBtn.addEventListener("pointerdown", () => triggerBtnHaptic(12, 200));
+    modalCloseBtn.addEventListener("pointerdown", () => triggerBtnHaptic(12, 160));
+
+    leftBtn.addEventListener("click", () => {
+      send({ type: "drag_end" });
+      send({ type: "click" });
+      triggerFeedback(15);
+    });
+
+    rightBtn.addEventListener("click", () => {
+      send({ type: "rightclick" });
+      triggerFeedback([15, 30, 15]);
+    });
+
+    scrollUpBtn.addEventListener("click", () => {
+      send({ type: "scroll", dir: "up" });
+    });
+
+    scrollDownBtn.addEventListener("click", () => {
+      send({ type: "scroll", dir: "down" });
+    });
+
+    // Helper Send
+    function send(data) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(data));
+      }
+    }
   </script>
 </body>
 </html>

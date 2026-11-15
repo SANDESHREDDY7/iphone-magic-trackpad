@@ -55,6 +55,13 @@ cat <<EOF > "${APP_DIR}/Contents/Info.plist"
     <true/>
     <key>LSUIElement</key>
     <false/>
+    <key>LSArchitecturePriority</key>
+    <array>
+        <string>arm64</string>
+        <string>x86_64</string>
+    </array>
+    <key>LSRequiresNativeExecution</key>
+    <true/>
 </dict>
 </plist>
 EOF
@@ -62,14 +69,22 @@ EOF
 # 4. Create Launcher Executable
 cat << 'EOF' > "${APP_DIR}/Contents/MacOS/launcher"
 #!/bin/bash
-DIR="$(cd "$(dirname "$0")/../Resources/app" && pwd)"
-NODE_EXEC=$(which node || echo "/usr/local/bin/node" || echo "/opt/homebrew/bin/node")
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
-if [ ! -x "$NODE_EXEC" ]; then
+if [ -x "/opt/homebrew/bin/node" ]; then
+    NODE_EXEC="/opt/homebrew/bin/node"
+elif [ -x "/usr/local/bin/node" ]; then
+    NODE_EXEC="/usr/local/bin/node"
+else
+    NODE_EXEC=$(which node 2>/dev/null)
+fi
+
+if [ -z "$NODE_EXEC" ] || [ ! -x "$NODE_EXEC" ]; then
     osascript -e 'display alert "Node.js Not Found" message "Please install Node.js from https://nodejs.org to run Magic Trackpad Companion."'
     exit 1
 fi
 
+DIR="$(cd "$(dirname "$0")/../Resources/app" && pwd)"
 cd "$DIR"
 
 # Check if port 3000 is already running
@@ -78,11 +93,22 @@ if lsof -i :3000 >/dev/null 2>&1; then
     exit 0
 fi
 
-# Launch server in background
-"$NODE_EXEC" server.js > "$HOME/Library/Logs/MagicTrackpad.log" 2>&1 &
+# Force arm64 on Apple Silicon to avoid Rosetta architecture mismatch
+SYS_ARCH=$(uname -m)
+if [ "$SYS_ARCH" = "arm64" ]; then
+    arch -arm64 "$NODE_EXEC" server.js > "$HOME/Library/Logs/MagicTrackpad.log" 2>&1 &
+else
+    "$NODE_EXEC" server.js > "$HOME/Library/Logs/MagicTrackpad.log" 2>&1 &
+fi
 SERVER_PID=$!
 
-sleep 1
+# Wait for server to start listening (up to 5 seconds)
+for i in {1..10}; do
+    if lsof -i :3000 >/dev/null 2>&1; then
+        break
+    fi
+    sleep 0.5
+done
 
 # Open the desktop QR dashboard
 open "http://localhost:3000/dashboard"
